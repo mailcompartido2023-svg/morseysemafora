@@ -9,8 +9,8 @@
             --bg: #0a0a0a;
             --card: #161616;
             --accent: #f59e0b;
-            --right-arm: #ff4757;
-            --left-arm: #2e86de;
+            --right-arm: #ff4757; /* Brazo derecho del personaje */
+            --left-arm: #2e86de;  /* Brazo izquierdo del personaje */
             --morse-color: #00ff88;
             --text: #ffffff;
         }
@@ -66,7 +66,7 @@
 
         .tool-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             margin-bottom: 20px;
             flex-wrap: wrap;
@@ -85,32 +85,6 @@
             align-items: center;
             gap: 8px;
             transition: transform 0.2s;
-        }
-
-        .audio-btn:active { transform: scale(0.95); }
-
-        .perspective-toggle {
-            display: flex;
-            background: #222;
-            padding: 4px;
-            border-radius: 10px;
-        }
-
-        .toggle-btn {
-            padding: 6px 14px;
-            border: none;
-            background: none;
-            color: #666;
-            cursor: pointer;
-            border-radius: 7px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-
-        .toggle-btn.active {
-            background: var(--accent);
-            color: black;
         }
 
         textarea {
@@ -145,18 +119,37 @@
         .human-body { position: relative; width: 100px; height: 120px; margin: 0 auto 10px auto; }
         .head { position: absolute; width: 20px; height: 20px; background: #444; border-radius: 50%; top: 5px; left: 50%; transform: translateX(-50%); }
         .torso { position: absolute; width: 30px; height: 45px; background: #333; border-radius: 6px; top: 28px; left: 50%; transform: translateX(-50%); }
-        .arm { position: absolute; width: 45px; height: 7px; top: 35px; left: 50%; transform-origin: left center; border-radius: 4px; transition: 0.5s; }
-        .arm::after { content: ''; position: absolute; right: -15px; top: -12px; width: 26px; height: 26px; clip-path: polygon(0 50%, 100% 0, 100% 100%); }
+        
+        /* Los brazos rotan desde el centro del pecho */
+        .arm { 
+            position: absolute; 
+            width: 45px; 
+            height: 6px; 
+            top: 35px; 
+            left: 50%; 
+            transform-origin: 0% 50%; 
+            border-radius: 4px; 
+            transition: 0.5s; 
+        }
+        
+        /* Banderas */
+        .arm::after { 
+            content: ''; 
+            position: absolute; 
+            right: -15px; 
+            top: -12px; 
+            width: 26px; 
+            height: 26px; 
+            clip-path: polygon(0 50%, 100% 0, 100% 100%); 
+        }
+
         .arm.right { background: var(--right-arm); z-index: 10; }
         .arm.right::after { background: var(--right-arm); }
         .arm.left { background: var(--left-arm); z-index: 9; }
         .arm.left::after { background: var(--left-arm); }
 
-        /* Estilos MORSE */
         .morse-code { font-family: monospace; font-size: 1.8rem; color: var(--morse-color); margin-top: 10px; font-weight: bold; }
         .label-letter { font-weight: 800; font-size: 1.2rem; color: #aaa; margin-top: 5px; }
-        .legend { display: flex; gap: 15px; font-size: 0.8rem; color: #888; margin-bottom: 20px;}
-        .dot-icon { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -171,52 +164,45 @@
     <div id="morseControls">
         <div class="tool-header">
             <h1>CÓDIGO <span style="font-weight: 300; color: var(--morse-color);">MORSE</span></h1>
-            <button class="audio-btn" onclick="playMorse()">🔊 REPRODUCIR SONIDO</button>
+            <button class="audio-btn" onclick="playMorse()">🔊 REPRODUCIR</button>
         </div>
     </div>
 
     <div id="semaforoControls" class="hidden">
         <div class="tool-header">
             <h1>SISTEMA <span style="font-weight: 300;">SEMAFORA</span></h1>
-            <div class="perspective-toggle">
-                <button class="toggle-btn active" id="btnFrente" onclick="setPerspective('frente')">FRENTE</button>
-                <button class="toggle-btn" id="btnEspalda" onclick="setPerspective('espalda')">ESPALDA</button>
-            </div>
-        </div>
-        <div class="legend">
-            <span><span class="dot-icon" style="background:var(--right-arm)"></span> Mano Derecha</span>
-            <span><span class="dot-icon" style="background:var(--left-arm)"></span> Mano Izquierda</span>
         </div>
     </div>
 
-    <textarea id="textInput" placeholder="Escribe el mensaje aquí para traducir..."></textarea>
+    <textarea id="textInput" placeholder="Escribe el mensaje aquí..."></textarea>
     <div id="visualOutput"></div>
 </div>
 
 <script>
     let currentMode = 'morse';
-    let currentPerspective = 'frente';
     let audioCtx = null;
 
+    // Ángulos ajustados según la imagen (Vista de FRENTE)
+    // Formato: [Brazo Derecho, Brazo Izquierdo]
+    // 90: Abajo, 45: Diagonal Abajo Der, 0: Derecha, 315: Diagonal Arriba Der, 270: Arriba...
     const semaphoreData = {
-        'A': [90, 135],  'B': [90, 180],  'C': [90, 225],  'D': [90, 270],
-        'E': [90, 315],  'F': [90, 0],    'G': [90, 45],   'H': [135, 180],
-        'I': [135, 225], 'J': [270, 0],   'K': [135, 270], 'L': [135, 315],
-        'M': [135, 0],   'N': [135, 45],  'O': [180, 225], 'P': [180, 270],
-        'Q': [180, 315], 'R': [180, 0],   'S': [180, 45],  'T': [225, 270],
-        'U': [225, 315], 'V': [270, 315], 'W': [0, 315],   'X': [0, 270],
-        'Y': [225, 0],   'Z': [45, 315],  ' ': null
+        'A': [135, 90],  'B': [180, 90],  'C': [225, 90],  'D': [270, 90],
+        'E': [90, 315],  'F': [90, 0],    'G': [90, 45],   'H': [180, 135],
+        'I': [225, 135], 'J': [0, 270],   'K': [270, 135], 'L': [315, 135],
+        'M': [0, 135],   'N': [45, 135],  'O': [225, 180], 'P': [270, 180],
+        'Q': [315, 180], 'R': [0, 180],   'S': [45, 180],  'T': [270, 225],
+        'U': [315, 225], 'V': [0, 270],   'W': [315, 0],   'X': [270, 0],
+        'Y': [0, 225],   'Z': [315, 45],  ' ': null
     };
 
     const morseData = {
-        'A': '.-',    'B': '-...',  'C': '-.-.',  'D': '-..',   'E': '.', 
-        'F': '..-.',  'G': '--.',   'H': '....',  'I': '..',    'J': '.---', 
-        'K': '-.-',   'L': '.-..',  'M': '--',    'N': '-.',    'O': '---', 
-        'P': '.--.',  'Q': '--.-',  'R': '.-.',   'S': '...',   'T': '-', 
-        'U': '..-',   'V': '...-',  'W': '.--',   'X': '-..-',  'Y': '-.--', 
-        'Z': '--..',  '1': '.----', '2': '..---', '3': '...--', '4': '....-', 
-        '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.', 
-        '0': '-----', ' ': '/'
+        'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 
+        'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..', 
+        'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.', 
+        'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 
+        'Y': '-.--', 'Z': '--..', '1': '.----', '2': '..---', '3': '...--', 
+        '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..', 
+        '9': '----.', '0': '-----', ' ': '/'
     };
 
     function switchMode(mode) {
@@ -225,13 +211,6 @@
         document.getElementById('btnSemaforoMode').classList.toggle('active', mode === 'semaforo');
         document.getElementById('semaforoControls').classList.toggle('hidden', mode !== 'semaforo');
         document.getElementById('morseControls').classList.toggle('hidden', mode !== 'morse');
-        render();
-    }
-
-    function setPerspective(view) {
-        currentPerspective = view;
-        document.getElementById('btnFrente').classList.toggle('active', view === 'frente');
-        document.getElementById('btnEspalda').classList.toggle('active', view === 'espalda');
         render();
     }
 
@@ -250,15 +229,14 @@
         if (char === ' ') return;
         const unit = document.createElement('div');
         unit.className = 'char-unit';
-        const isBack = currentPerspective === 'espalda';
-        let rAngle = semaphoreData[char][0], lAngle = semaphoreData[char][1];
-        if (!isBack) { rAngle = 180 - rAngle; lAngle = 180 - lAngle; }
+        
+        const angles = semaphoreData[char];
         
         unit.innerHTML = `
             <div class="human-body">
                 <div class="head"></div><div class="torso"></div>
-                <div class="arm right" style="transform:rotate(${rAngle}deg)"></div>
-                <div class="arm left" style="transform:rotate(${lAngle}deg)"></div>
+                <div class="arm right" style="transform:rotate(${angles[0]}deg)"></div>
+                <div class="arm left" style="transform:rotate(${angles[1]}deg)"></div>
             </div>
             <div class="label-letter">${char}</div>`;
         container.appendChild(unit);
@@ -275,44 +253,32 @@
 
     async function playMorse() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
         const text = document.getElementById('textInput').value.toUpperCase();
-        // Velocidad ajustada: unitTime mayor para más lentitud
         const unitTime = 0.15; 
         let time = audioCtx.currentTime + 0.1;
 
         for (const char of text) {
             const code = morseData[char];
             if (!code) continue;
-
-            if (char === ' ') {
-                time += unitTime * 7; // Pausa entre palabras
-                continue;
-            }
+            if (char === ' ') { time += unitTime * 7; continue; }
 
             for (const sym of code) {
-                if (sym === '.' || sym === '-') {
-                    const duration = sym === '.' ? unitTime : unitTime * 3.5; // Raya más larga
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    
-                    osc.type = 'sine';
-                    osc.frequency.value = 550; // Tono más suave
-                    
-                    gain.gain.setValueAtTime(0, time);
-                    gain.gain.linearRampToValueAtTime(0.2, time + 0.01);
-                    gain.gain.setValueAtTime(0.2, time + duration - 0.01);
-                    gain.gain.linearRampToValueAtTime(0, time + duration);
-                    
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    
-                    osc.start(time);
-                    osc.stop(time + duration);
-                    time += duration + unitTime; // Espacio entre símbolos de una letra
-                }
+                const duration = sym === '.' ? unitTime : unitTime * 3.5;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 550;
+                gain.gain.setValueAtTime(0, time);
+                gain.gain.linearRampToValueAtTime(0.2, time + 0.01);
+                gain.gain.setValueAtTime(0.2, time + duration - 0.01);
+                gain.gain.linearRampToValueAtTime(0, time + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(time);
+                osc.stop(time + duration);
+                time += duration + unitTime;
             }
-            time += unitTime * 3; // Espacio entre letras
+            time += unitTime * 3;
         }
     }
 
