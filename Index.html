@@ -21,7 +21,6 @@
             --patch-size: 115px;
         }
 
-        /* --- RESTRICCIONES TÉCNICAS --- */
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg);
@@ -37,11 +36,24 @@
             user-select: none;
         }
 
-        img {
-            -webkit-user-drag: none;
-            user-drag: none;
-            pointer-events: none;
+        /* --- CONTADOR SUPERIOR DERECHA --- */
+        .user-counter { 
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 0.75rem;
+            color: var(--morse-color);
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 8px 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            z-index: 1000;
+            text-transform: uppercase;
+            backdrop-filter: blur(4px);
         }
+
+        img { -webkit-user-drag: none; user-drag: none; pointer-events: none; }
 
         .scout-header {
             width: 100%;
@@ -68,9 +80,7 @@
             overflow: hidden;
             border: 3px solid rgba(255, 255, 255, 0.15);
             background-color: #222;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
         }
         .scout-patch { width: 100%; height: 100%; object-fit: cover; }
 
@@ -106,13 +116,7 @@
             text-align: center;
         }
 
-        /* --- SELECTOR DE VELOCIDAD --- */
-        .speed-selector {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
+        .speed-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
         .speed-btn {
             background: #27272a;
             color: var(--text-muted);
@@ -123,11 +127,7 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
-        .speed-btn.selected {
-            background: var(--morse-color);
-            color: #000;
-            border-color: var(--morse-color);
-        }
+        .speed-btn.selected { background: var(--morse-color); color: #000; border-color: var(--morse-color); }
 
         .action-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 
@@ -139,9 +139,7 @@
             cursor: pointer;
             text-transform: uppercase;
             font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: flex; align-items: center; gap: 8px;
         }
 
         .btn-play { background: var(--morse-color); color: #000; width: 220px; justify-content: center; }
@@ -179,24 +177,13 @@
         .torso { position: absolute; width: 20px; height: 35px; background: #3f3f46; border-radius: 4px; top: 18px; left: 50%; transform: translateX(-50%); }
         
         .arm { 
-            position: absolute; 
-            width: 35px; 
-            height: 5px; 
-            top: 25px; 
-            left: 50%; 
-            transform-origin: 0% 50%; 
-            border-radius: 4px; 
-            transition: 0.5s; 
+            position: absolute; width: 35px; height: 5px; top: 25px; left: 50%; 
+            transform-origin: 0% 50%; border-radius: 4px; transition: 0.5s; 
         }
         
         .arm::after { 
-            content: ''; 
-            position: absolute; 
-            right: -12px; 
-            top: -10px; 
-            width: 20px; 
-            height: 20px; 
-            clip-path: polygon(0 50%, 100% 0, 100% 100%); 
+            content: ''; position: absolute; right: -12px; top: -10px; 
+            width: 20px; height: 20px; clip-path: polygon(0 50%, 100% 0, 100% 100%); 
         }
 
         .arm.right { background: var(--right-arm); z-index: 10; }
@@ -210,18 +197,14 @@
         .hidden { display: none !important; }
         
         .footer-copyright {
-            margin-top: 40px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            opacity: 0.6;
+            margin-top: 40px; margin-bottom: 20px; text-align: center;
+            font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; opacity: 0.6;
         }
     </style>
 </head>
 <body>
+
+<div id="userCounter" class="user-counter">Conexiones: ...</div>
 
 <header class="scout-header">
     <h1 class="main-title">Traductor Scout</h1>
@@ -261,7 +244,7 @@
 </footer>
 
 <script>
-    // BLOQUEOS DE SEGURIDAD
+    // Seguridad básica
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('keydown', e => {
         if (e.ctrlKey && (e.key === 's' || e.key === 'u')) e.preventDefault();
@@ -270,16 +253,16 @@
 
     let currentMode = 'morse';
     let audioCtx = null;
-    let currentUnitTime = 0.15; // Velocidad Media por defecto
+    let currentUnitTime = 0.15;
 
     const semaphoreData = {
-        'A': [135, 90],  'B': [180, 90],  'C': [225, 90],  'D': [270, 90],
-        'E': [90, 315],  'F': [90, 0],    'G': [90, 45],   'H': [180, 135],
-        'I': [225, 135], 'J': [0, 270],   'K': [270, 135], 'L': [315, 135],
-        'M': [0, 135],   'N': [45, 135],  'O': [225, 180], 'P': [270, 180],
-        'Q': [315, 180], 'R': [0, 180],   'S': [45, 180],  'T': [270, 225],
-        'U': [315, 225], 'V': [0, 270],   'W': [315, 0],   'X': [270, 0],
-        'Y': [0, 225],   'Z': [315, 45]
+        'A': [135, 90], 'B': [180, 90], 'C': [225, 90], 'D': [270, 90],
+        'E': [90, 315], 'F': [90, 0], 'G': [90, 45], 'H': [180, 135],
+        'I': [225, 135], 'J': [0, 270], 'K': [270, 135], 'L': [315, 135],
+        'M': [0, 135], 'N': [45, 135], 'O': [225, 180], 'P': [270, 180],
+        'Q': [315, 180], 'R': [0, 180], 'S': [45, 180], 'T': [270, 225],
+        'U': [315, 225], 'V': [0, 270], 'W': [315, 0], 'X': [270, 0],
+        'Y': [0, 225], 'Z': [315, 45]
     };
 
     const morseData = {
@@ -290,6 +273,17 @@
         'Y': '-.--', 'Z': '--..', '1': '.----', '2': '..---', '3': '...--', 
         '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..', 
         '9': '----.', '0': '-----', ' ': '/'
+    };
+
+    window.onload = () => {
+        fetch('https://api.countapi.xyz/hit/antillanca-scout-final/visits')
+            .then(res => res.json())
+            .then(res => {
+                document.getElementById('userCounter').innerText = `CONEXIONES: ${res.value}`;
+            })
+            .catch(() => {
+                document.getElementById('userCounter').innerText = `EN LÍNEA`;
+            });
     };
 
     function setSpeed(time, btn) {
@@ -351,7 +345,10 @@
         
         for (const char of text) {
             const code = morseData[char];
-            if (!code || char === ' ') { time += currentUnitTime * 4; continue; }
+            if (!code || char === ' ') { 
+                time += currentUnitTime * 7; 
+                continue; 
+            }
             for (const sym of code) {
                 const duration = sym === '.' ? currentUnitTime : currentUnitTime * 3;
                 const osc = audioCtx.createOscillator();
@@ -368,7 +365,8 @@
                 osc.stop(time + duration);
                 time += duration + currentUnitTime;
             }
-            time += currentUnitTime * 2;
+            // Espacio de 1 segundo entre letra y letra
+            time += 1.0; 
         }
     }
 </script>
