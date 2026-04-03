@@ -21,7 +21,7 @@
             --patch-size: 115px;
         }
 
-        /* --- RESTRICCIONES TÉCNICAS (CSS) --- */
+        /* --- RESTRICCIONES TÉCNICAS --- */
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg);
@@ -32,13 +32,11 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            /* Evitar selección de texto */
             -webkit-user-select: none;
             -ms-user-select: none;
             user-select: none;
         }
 
-        /* Evitar arrastre de imágenes */
         img {
             -webkit-user-drag: none;
             user-drag: none;
@@ -74,7 +72,7 @@
             justify-content: center;
             align-items: center;
         }
-        .scout-patch { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+        .scout-patch { width: 100%; height: 100%; object-fit: cover; }
 
         .main-container {
             width: 100%;
@@ -86,7 +84,7 @@
             box-sizing: border-box;
         }
 
-        .mode-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        .mode-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
         .mode-btn {
             padding: 10px 20px;
             border: 1px solid var(--border-color);
@@ -108,6 +106,29 @@
             text-align: center;
         }
 
+        /* --- SELECTOR DE VELOCIDAD --- */
+        .speed-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .speed-btn {
+            background: #27272a;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            padding: 6px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .speed-btn.selected {
+            background: var(--morse-color);
+            color: #000;
+            border-color: var(--morse-color);
+        }
+
         .action-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 
         .btn {
@@ -123,7 +144,7 @@
             gap: 8px;
         }
 
-        .btn-play { background: var(--morse-color); color: #000; width: 250px; justify-content: center; }
+        .btn-play { background: var(--morse-color); color: #000; width: 220px; justify-content: center; }
         .btn-clear { background: var(--accent); color: #000; }
 
         textarea {
@@ -138,7 +159,6 @@
             margin-bottom: 25px;
             box-sizing: border-box;
             resize: none;
-            /* Permitir selección solo en el área de escritura */
             -webkit-user-select: text;
             user-select: text;
         }
@@ -219,6 +239,13 @@
     </div>
 
     <div class="controls-panel">
+        <div id="morseControls">
+            <div class="speed-selector">
+                <button class="speed-btn" onclick="setSpeed(0.25, this)">Lento</button>
+                <button class="speed-btn selected" onclick="setSpeed(0.15, this)">Medio</button>
+                <button class="speed-btn" onclick="setSpeed(0.08, this)">Rápido</button>
+            </div>
+        </div>
         <div class="action-grid">
             <button id="playBtn" class="btn btn-play" onclick="playMorse()">🔊 Reproducir Sonido</button>
             <button class="btn btn-clear" onclick="clearAll()">🧹 Limpiar</button>
@@ -234,18 +261,16 @@
 </footer>
 
 <script>
-    /* --- RESTRICCIONES TÉCNICAS (JS) --- */
-    // Bloquear clic derecho
-    document.addEventListener('contextmenu', event => event.preventDefault());
-
-    // Bloquear atajos de teclado (Guardar, Ver código, Herramientas dev)
-    document.addEventListener('keydown', function(e) {
+    // BLOQUEOS DE SEGURIDAD
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
         if (e.ctrlKey && (e.key === 's' || e.key === 'u')) e.preventDefault();
         if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) e.preventDefault();
     });
 
     let currentMode = 'morse';
     let audioCtx = null;
+    let currentUnitTime = 0.15; // Velocidad Media por defecto
 
     const semaphoreData = {
         'A': [135, 90],  'B': [180, 90],  'C': [225, 90],  'D': [270, 90],
@@ -267,11 +292,18 @@
         '9': '----.', '0': '-----', ' ': '/'
     };
 
+    function setSpeed(time, btn) {
+        currentUnitTime = time;
+        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+    }
+
     function switchMode(mode) {
         currentMode = mode;
         document.getElementById('btnMorseMode').classList.toggle('active', mode === 'morse');
         document.getElementById('btnSemaforaMode').classList.toggle('active', mode === 'semafora');
         document.getElementById('playBtn').classList.toggle('hidden', mode === 'semafora');
+        document.getElementById('morseControls').classList.toggle('hidden', mode === 'semafora');
         render();
     }
 
@@ -279,7 +311,6 @@
         const text = document.getElementById('textInput').value.toUpperCase();
         const output = document.getElementById('visualOutput');
         output.innerHTML = '';
-
         text.split('').forEach(char => {
             if (currentMode === 'semafora' && semaphoreData[char]) renderSemafora(char, output);
             else if (currentMode === 'morse' && (morseData[char] || char === ' ')) renderMorse(char, output);
@@ -291,12 +322,10 @@
         unit.className = 'char-unit';
         const angles = semaphoreData[char];
         unit.innerHTML = `
-            <div class="human-body">
-                <div class="head"></div><div class="torso"></div>
+            <div class="human-body"><div class="head"></div><div class="torso"></div>
                 <div class="arm right" style="transform:rotate(${angles[0]}deg)"></div>
                 <div class="arm left" style="transform:rotate(${angles[1]}deg)"></div>
-            </div>
-            <div class="label-letter">${char}</div>`;
+            </div><div class="label-letter">${char}</div>`;
         container.appendChild(unit);
     }
 
@@ -318,13 +347,13 @@
     async function playMorse() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const text = document.getElementById('textInput').value.toUpperCase();
-        const unitTime = 0.15; 
         let time = audioCtx.currentTime + 0.1;
+        
         for (const char of text) {
             const code = morseData[char];
-            if (!code || char === ' ') { time += unitTime * 4; continue; }
+            if (!code || char === ' ') { time += currentUnitTime * 4; continue; }
             for (const sym of code) {
-                const duration = sym === '.' ? unitTime : unitTime * 3;
+                const duration = sym === '.' ? currentUnitTime : currentUnitTime * 3;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'sine';
@@ -337,9 +366,9 @@
                 gain.connect(audioCtx.destination);
                 osc.start(time);
                 osc.stop(time + duration);
-                time += duration + unitTime;
+                time += duration + currentUnitTime;
             }
-            time += unitTime * 2;
+            time += currentUnitTime * 2;
         }
     }
 </script>
